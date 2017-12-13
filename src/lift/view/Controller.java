@@ -3,10 +3,7 @@ package lift.view;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Alert;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import lift.Main;
 import lift.model.customer.Customer;
 import lift.model.customer.ElderCustomer;
@@ -44,6 +41,10 @@ public class Controller implements Initializable{
     @FXML
     private TextField desFloorTextField;
 
+    @FXML
+    private Button playButton;
+
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         bindTableColumns();
@@ -67,7 +68,12 @@ public class Controller implements Initializable{
     private void addListener(){
         //添加集合被更改的监听
         mainApp.getCustomersData().addListener((ListChangeListener<Customer>) c -> {
-
+            //如果顾客列表更新了，将激活PlayButton
+            if (mainApp.getCustomersData().size()>0){
+                playButton.setDisable(false);
+            }else{
+                playButton.setDisable(true);
+            }
         });
     }
 
@@ -103,6 +109,8 @@ public class Controller implements Initializable{
         this.mainApp=mainApp;
 
         customersTableView.setItems(mainApp.getCustomersData());
+
+        addListener();
     }
 
     /**
