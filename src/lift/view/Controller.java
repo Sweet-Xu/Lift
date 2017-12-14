@@ -334,22 +334,22 @@ public class Controller implements Initializable{
     private void LiftSim(){
         Lift lift=building.getLift();
         if(building.isAllFloorNullWait() && lift.getCustomers().isEmpty()){
+            lift.closeDoor();
             lift.stop();
         }else {
             switch (lift.getState()) {
                 case Lift.LIFT_STOP:
-                    switch (building.getLift().getStateLD()) {
-                        case Lift.LIFT_DISCHARGE_CUSTOMER:
-                            if (!custoemrGoOutLift()) {
-                                lift.setStateLD(Lift.LIFT_LOADING_CUSTOMER);
-                            }
-                            break;
-                        case Lift.LIFT_LOADING_CUSTOMER:
-                            if (!customerGetInLift()) {
-                                lift.setStateLD(Lift.LIFT_DISCHARGE_CUSTOMER);
-                                lift.run();
-                            }
-                            break;
+                    if (lift.getStateLD()==Lift.LIFT_DISCHARGE_CUSTOMER){
+                        if (!custoemrGoOutLift()) {
+                            lift.setStateLD(Lift.LIFT_LOADING_CUSTOMER);
+                        }
+                    }
+
+                    if (lift.getStateLD()==Lift.LIFT_LOADING_CUSTOMER){
+                        if (!customerGetInLift()) {
+                            lift.setStateLD(Lift.LIFT_DISCHARGE_CUSTOMER);
+                            lift.run();
+                        }
                     }
                     break;
                 case Lift.LIFT_RUNNING:
@@ -357,8 +357,6 @@ public class Controller implements Initializable{
                     if (liftClock < 10) {
                         liftClock++;
                     } else {
-                        liftClock = 0;
-                        lift.stop();
                         switch (lift.getDirection()) {
                             case Lift.LIFT_UP:
                                 lift.setNowLevel(lift.getNowLevel() + 1);
@@ -373,6 +371,12 @@ public class Controller implements Initializable{
                                 }
                                 break;
                         }
+                        if (lift.getCustomers().peek().getDestinationFloor()==lift.getNowLevel() ||
+                                (lift.getDirection()==Lift.LIFT_UP && !building.getFloors().get(lift.getNowLevel()-1).isUpEmpty()) ||
+                                (lift.getDirection()==Lift.LIFT_DOWN && !building.getFloors().get(lift.getNowLevel()-1).isDownEmpty())){
+                            lift.stop();
+                        }
+                        liftClock = 0;
                     }
                     break;
             }
