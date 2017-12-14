@@ -1,14 +1,24 @@
 package lift.view;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.collections.ListChangeListener;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.shape.Polygon;
+import javafx.scene.shape.Rectangle;
+import javafx.util.Duration;
 import lift.Main;
+import lift.model.Building;
+import lift.model.Lift;
 import lift.model.customer.Customer;
 import lift.model.customer.ElderCustomer;
 import lift.model.customer.YoungCustomer;
 import lift.util.AlertUtil;
+import lift.util.CustomerQueue;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -16,6 +26,12 @@ import java.util.ResourceBundle;
 public class Controller implements Initializable{
 
     private Main mainApp;
+
+    private Timeline timeLine;
+    private KeyFrame liftMiu;
+
+    private Building building;
+    private CustomerQueue<Customer> customersQueue;
 
     @FXML
     private TableView<Customer> customersTableView;
@@ -44,10 +60,40 @@ public class Controller implements Initializable{
     @FXML
     private Button playButton;
 
+    @FXML
+    private Label liftLevelLCLabel;
+    @FXML
+    private Label liftLevelLabel;
+    @FXML
+    private Label stateLabel;
+    @FXML
+    private Label customerNumberLabel;
+
+    @FXML
+    private Label timeLockLabel;
+
+    @FXML
+    private Rectangle leftDoorRectangle;
+    @FXML
+    private Rectangle rightDoorRectangle;
+    @FXML
+    private Polygon upPolygon;
+    @FXML
+    private Polygon downPolygon;
+
+    private int liftClock=0;//成员变量 用于记录某个状态的时间钟
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        building=new Building();
         bindTableColumns();
+        addBuildingListener();
+        setAnimation();
+        initCustomerQueue();
+    }
+
+    private void initCustomerQueue(){
+        customersQueue=new CustomerQueue<>((o1, o2) -> (o1.getComingTime()-o2.getComingTime()));
     }
 
     /**
@@ -78,6 +124,18 @@ public class Controller implements Initializable{
     }
 
     /**
+     * 绑定建筑物相关的监听
+     * 用来对界面信息自动更新的
+     */
+    private void addBuildingListener(){
+        building.getTimer().addClockListener(timeLockLabel);
+        building.getLift().addNowLevelChangeListener(liftLevelLabel,liftLevelLCLabel);
+        building.getLift().addDoorChangeListener(leftDoorRectangle,rightDoorRectangle);
+        building.getLift().addCustomerNumberListener(customerNumberLabel);
+        building.getLift().addLiftStateChangeListener(stateLabel,upPolygon,downPolygon);
+    }
+
+    /**
      * 添加顾客事件
      * 使用FXML标记绑定->Button
      */
@@ -96,9 +154,26 @@ public class Controller implements Initializable{
     public void handleDeleteCustomer(){
         int selectedIndex=customersTableView.getSelectionModel().getSelectedIndex();
         if(selectedIndex>=0){
-            customersTableView.getItems().remove(selectedIndex);
+            Customer customer=customersTableView.getItems().remove(selectedIndex);
+            customersQueue.remove(customer);
             System.out.println("customers="+mainApp.getCustomersData().size());
         }
+    }
+
+    /**
+     * 启动模拟事件
+     */
+    @FXML
+    public void handleStartSimulate(){
+        timeLine.play();
+    }
+
+    /**
+     * 暂停模拟事件
+     */
+    @FXML
+    public void handlePauseSimulate(){
+        timeLine.pause();
     }
 
     /**
@@ -109,7 +184,6 @@ public class Controller implements Initializable{
         this.mainApp=mainApp;
 
         customersTableView.setItems(mainApp.getCustomersData());
-
         addListener();
     }
 
@@ -197,6 +271,14 @@ public class Controller implements Initializable{
         return isAsset;
     }
 
+    /**
+     * 创建新的顾客对象
+     * 根据年龄实现相对应的类
+     * age>60 ->elderCustomer
+     * else ->youngerCustomer
+     *
+     * 将数据传入列表数组中
+     */
     private void insertNewCustomer(){
         int id;
         if (mainApp.getCustomersData().size()==0){
@@ -217,5 +299,130 @@ public class Controller implements Initializable{
         }
 
         mainApp.getCustomersData().add(customer);
+        customersQueue.add(customer);
+    }
+
+    /**
+     * 设置动画
+     * 设置动画为无限循环
+     */
+    private void setAnimation(){
+        setKeyFrame();
+        timeLine=new Timeline(liftMiu);
+        timeLine.setCycleCount(Timeline.INDEFINITE);
+    }
+
+    /**
+     * 设置动画关键帧
+     */
+    private void setKeyFrame(){
+        EventHandler<ActionEvent> eventHandler=event -> {
+            checkCustomerInFloor();
+
+            LiftSim();
+
+            building.getTimer().addSecond();
+        };
+
+        liftMiu=new KeyFrame(Duration.millis(1000),eventHandler);
+    }
+
+
+    /**
+     * 电梯模拟实现逻辑代码
+     */
+    private void LiftSim(){
+        Lift lift=building.getLift();
+        if(building.isAllFloorNullWait() && lift.getCustomers().isEmpty()){
+            lift.stop();
+        }else {
+            switch (lift.getState()) {
+                case Lift.LIFT_STOP:
+                    switch (building.getLift().getStateLD()) {
+                        case Lift.LIFT_DISCHARGE_CUSTOMER:
+                            if (!custoemrGoOutLift()) {
+                                lift.setStateLD(Lift.LIFT_LOADING_CUSTOMER);
+                            }
+                            break;
+                        case Lift.LIFT_LOADING_CUSTOMER:
+                            if (!customerGetInLift()) {
+                                lift.setStateLD(Lift.LIFT_DISCHARGE_CUSTOMER);
+                                lift.run();
+                            }
+                            break;
+                    }
+                    break;
+                case Lift.LIFT_RUNNING:
+                    lift.closeDoor();
+                    if (liftClock < 10) {
+                        liftClock++;
+                    } else {
+                        liftClock = 0;
+                        lift.stop();
+                        switch (lift.getDirection()) {
+                            case Lift.LIFT_UP:
+                                lift.setNowLevel(lift.getNowLevel() + 1);
+                                if (lift.getNowLevel() == 100) {
+                                    lift.turnDown();
+                                }
+                                break;
+                            case Lift.LIFT_DOWN:
+                                lift.setNowLevel(lift.getNowLevel() - 1);
+                                if (lift.getNowLevel() == 1) {
+                                    lift.turnUp();
+                                }
+                                break;
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    /**
+     * 扫描顾客
+     * 当时间钟Timer的值与顾客到达时间相同
+     * 将顾客放入到相应的楼层中。
+     */
+    private void checkCustomerInFloor(){
+        Customer customer;
+        do{
+            if(customersQueue.isEmpty()){
+                break;
+            }
+            customer=customersQueue.peek();
+            if(customer.getComingTime()==building.getTimer().getSecond()){
+                building.getFloors().get(customer.getSourceFloor()-1).inFLoor(customer);
+                customersQueue.poll();
+            }
+        }while(customer.getComingTime()==building.getTimer().getSecond());
+    }
+
+    /**
+     *顾客下电梯 模拟业务
+     * 如果返回 True，证明下了乘客
+     * @return
+     */
+    private boolean custoemrGoOutLift(){
+        Lift lift=building.getLift();
+        boolean hadCustomerOutLift=false;
+        Customer customer=lift.outLift();
+        if (customer!=null){
+            customer.setLeavingTime(building.getTimer().getSecond()+1);
+            hadCustomerOutLift=true;
+        }
+
+        return hadCustomerOutLift;
+    }
+
+    /**
+     *顾客上电梯 模拟业务
+     * 如果返回 True，证明上了乘客
+     * @return
+     */
+    private boolean customerGetInLift(){
+        Lift lift=building.getLift();
+        boolean hadCustomerOutLift=lift.inLift(building.getFloors().get(lift.getNowLevel()-1));
+        return  hadCustomerOutLift;
     }
 }
