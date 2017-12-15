@@ -54,7 +54,7 @@ public class Floor {
     }
 
     public void inFLoor(Customer customer){
-        if(Math.abs(customer.getDestinationFloor()-customer.getSourceFloor())>0){
+        if(customer.getDestinationFloor()-customer.getSourceFloor()>0){
             if(customer.getAge()>=60){
                 upElderCustomerQueue.add(customer);
             }else{

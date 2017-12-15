@@ -149,7 +149,7 @@ public class Lift {
                 Customer customer = queue.poll();
                 customers.add(customer);
                 System.out.println("顾客Id： " + customer.getId() + " 进入电梯");
-                customerNumber.set(customerNumber.get() + 1);
+                customerNumber.set(customers.size());
                 return true;
             }else{
 
@@ -171,7 +171,7 @@ public class Lift {
             if (customers.peek().getDestinationFloor()==getNowLevel()) {
                 openDoor();
                 customer = customers.poll();
-                customerNumber.set(customerNumber.get() - 1);
+                customerNumber.set(customers.size());
             }
         }
 
@@ -182,16 +182,24 @@ public class Lift {
      * 更改向上运行
      */
     public void turnUp(){
-        customers=new CustomerQueue<>(upComparator);
-        setDirection(LIFT_UP);
+        if(getDirection()!=LIFT_UP || customers==null){
+            customers = new CustomerQueue<>(upComparator);
+            customerNumber.set(customers.size());
+            System.out.println("更改 向上");
+            setDirection(LIFT_UP);
+        }
     }
 
     /**
      * 更改向下运行
      */
     public void turnDown(){
-        customers=new CustomerQueue<>(downComparator);
-        setDirection(LIFT_DOWN);
+        if(getDirection()!=LIFT_DOWN || customers==null) {
+            customers = new CustomerQueue<>(downComparator);
+            customerNumber.set(customers.size());
+            System.out.println("更改 向下");
+            setDirection(LIFT_DOWN);
+        }
     }
 
     /**

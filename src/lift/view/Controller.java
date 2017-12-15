@@ -360,18 +360,22 @@ public class Controller implements Initializable{
                         switch (lift.getDirection()) {
                             case Lift.LIFT_UP:
                                 lift.setNowLevel(lift.getNowLevel() + 1);
-                                if (lift.getNowLevel() == 100) {
+                                System.out.println("当前楼层：" + lift.getNowLevel());
+                                if ((lift.getCustomers().isEmpty() && building.isUpNullWaitFromThisFloor(lift.getNowLevel()))) {
                                     lift.turnDown();
                                 }
                                 break;
                             case Lift.LIFT_DOWN:
                                 lift.setNowLevel(lift.getNowLevel() - 1);
-                                if (lift.getNowLevel() == 1) {
+                                System.out.println("当前楼层：" + lift.getNowLevel());
+                                if (lift.getCustomers().isEmpty() && building.isDownNullWaitFromThisFloor(lift.getNowLevel())) {
                                     lift.turnUp();
                                 }
                                 break;
                         }
-                        if (lift.getCustomers().peek().getDestinationFloor()==lift.getNowLevel() ||
+
+
+                        if (!lift.getCustomers().isEmpty() && (lift.getCustomers().peek().getDestinationFloor()==lift.getNowLevel()) ||
                                 (lift.getDirection()==Lift.LIFT_UP && !building.getFloors().get(lift.getNowLevel()-1).isUpEmpty()) ||
                                 (lift.getDirection()==Lift.LIFT_DOWN && !building.getFloors().get(lift.getNowLevel()-1).isDownEmpty())){
                             lift.stop();
