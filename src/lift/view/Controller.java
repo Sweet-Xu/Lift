@@ -59,6 +59,8 @@ public class Controller implements Initializable{
 
     @FXML
     private Button playButton;
+    @FXML
+    private Button pauseButton;
 
     @FXML
     private Label liftLevelLCLabel;
@@ -166,6 +168,8 @@ public class Controller implements Initializable{
     @FXML
     public void handleStartSimulate(){
         timeLine.play();
+        pauseButton.setDisable(false);
+        playButton.setDisable(true);
     }
 
     /**
@@ -174,6 +178,9 @@ public class Controller implements Initializable{
     @FXML
     public void handlePauseSimulate(){
         timeLine.pause();
+        pauseButton.setDisable(true);
+        playButton.setDisable(false);
+        playButton.setText("继续模拟");
     }
 
     /**
