@@ -81,7 +81,7 @@ public class Controller implements Initializable{
     @FXML
     private Polygon downPolygon;
 
-    private int liftClock=0;//成员变量 用于记录某个状态的时间钟
+    private int liftClock=1;//成员变量 用于记录某个状态的时间钟
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -349,41 +349,46 @@ public class Controller implements Initializable{
                         if (!customerGetInLift()) {
                             lift.setStateLD(Lift.LIFT_DISCHARGE_CUSTOMER);
                             lift.run();
+                            liftRun(lift);
                         }
                     }
                     break;
                 case Lift.LIFT_RUNNING:
-                    lift.closeDoor();
-                    if (liftClock < 10) {
-                        liftClock++;
-                    } else {
-                        switch (lift.getDirection()) {
-                            case Lift.LIFT_UP:
-                                lift.setNowLevel(lift.getNowLevel() + 1);
-                                System.out.println("当前楼层：" + lift.getNowLevel());
-                                if ((lift.getCustomers().isEmpty() && building.isUpNullWaitFromThisFloor(lift.getNowLevel()))) {
-                                    lift.turnDown();
-                                }
-                                break;
-                            case Lift.LIFT_DOWN:
-                                lift.setNowLevel(lift.getNowLevel() - 1);
-                                System.out.println("当前楼层：" + lift.getNowLevel());
-                                if (lift.getCustomers().isEmpty() && building.isDownNullWaitFromThisFloor(lift.getNowLevel())) {
-                                    lift.turnUp();
-                                }
-                                break;
-                        }
+                    liftRun(lift);
+                    break;
+            }
+        }
+    }
 
-
-                        if (!lift.getCustomers().isEmpty() && (lift.getCustomers().peek().getDestinationFloor()==lift.getNowLevel()) ||
-                                (lift.getDirection()==Lift.LIFT_UP && !building.getFloors().get(lift.getNowLevel()-1).isUpEmpty()) ||
-                                (lift.getDirection()==Lift.LIFT_DOWN && !building.getFloors().get(lift.getNowLevel()-1).isDownEmpty())){
-                            lift.stop();
-                        }
-                        liftClock = 0;
+    private void liftRun(Lift lift){
+        lift.closeDoor();
+        if (liftClock < 10) {
+            liftClock++;
+        } else {
+            switch (lift.getDirection()) {
+                case Lift.LIFT_UP:
+                    lift.setNowLevel(lift.getNowLevel() + 1);
+                    System.out.println("当前楼层：" + lift.getNowLevel());
+                    if ((lift.getCustomers().isEmpty() && building.isUpNullWaitFromThisFloor(lift.getNowLevel()))) {
+                        lift.turnDown();
+                    }
+                    break;
+                case Lift.LIFT_DOWN:
+                    lift.setNowLevel(lift.getNowLevel() - 1);
+                    System.out.println("当前楼层：" + lift.getNowLevel());
+                    if (lift.getCustomers().isEmpty() && building.isDownNullWaitFromThisFloor(lift.getNowLevel())) {
+                        lift.turnUp();
                     }
                     break;
             }
+
+
+            if (!lift.getCustomers().isEmpty() && (lift.getCustomers().peek().getDestinationFloor()==lift.getNowLevel()) ||
+                    (lift.getDirection()==Lift.LIFT_UP && !building.getFloors().get(lift.getNowLevel()-1).isUpEmpty()) ||
+                    (lift.getDirection()==Lift.LIFT_DOWN && !building.getFloors().get(lift.getNowLevel()-1).isDownEmpty())){
+                lift.stop();
+            }
+            liftClock = 1;
         }
     }
 
